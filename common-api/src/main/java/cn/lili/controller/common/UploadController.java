@@ -55,6 +55,9 @@ public class UploadController {
                                         String base64,
                                         @RequestHeader String accessToken, @RequestParam String directoryPath) {
 
+        if(StrUtil.isBlank(directoryPath)){
+            directoryPath = "default";
+        }
 
         AuthUser authUser = UserContext.getAuthUser(cache, accessToken);
         //如果用户未登录，则无法上传图片
@@ -105,8 +108,10 @@ public class UploadController {
             //如果是店铺，则记录店铺id
             if (authUser.getRole().equals(UserEnums.STORE)) {
                 newFile.setOwnerId(authUser.getStoreId());
+                newFile.setOwnerName(authUser.getStoreName());
             } else {
                 newFile.setOwnerId(authUser.getId());
+                newFile.setOwnerName(authUser.getNickName());
             }
 
             //存储文件目录

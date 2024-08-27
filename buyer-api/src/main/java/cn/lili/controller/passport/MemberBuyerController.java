@@ -154,6 +154,32 @@ public class MemberBuyerController {
         }
     }
 
+    @ApiOperation(value = "绑定手机号")
+    @ApiImplicitParams({
+            @ApiImplicitParam(name = "username", value = "用户名", required = true, paramType = "query"),
+            @ApiImplicitParam(name = "mobile", value = "手机号", required = true, paramType = "query"),
+            @ApiImplicitParam(name = "code", value = "验证码", required = true, paramType = "query"),
+    })
+    @PostMapping("/bindMobile")
+    public ResultMessage<Object> bindMobile(@NotNull(message = "用户名不能为空") @RequestParam String username,
+                                            @NotNull(message = "手机号为空") @RequestParam String mobile,
+                                            @NotNull(message = "验证码为空") @RequestParam String code,
+                                            @RequestHeader String uuid) {
+        if (smsUtil.verifyCode(mobile, VerificationEnums.BIND_MOBILE, uuid, code)) {
+            Member member = memberService.findByUsername(username);
+            Member memberByMobile = memberService.findByMobile(mobile);
+            if (member == null) {
+                throw new ServiceException(ResultCode.USER_NOT_EXIST);
+            }
+            if(memberByMobile != null){
+                throw new ServiceException(ResultCode.USER_MOBILE_REPEATABLE_ERROR);
+            }
+            return ResultUtil.data(memberService.changeMobile(member.getId(), mobile));
+        } else {
+            throw new ServiceException(ResultCode.VERIFICATION_SMS_CHECKED_ERROR);
+        }
+    }
+
     @ApiOperation(value = "注册用户")
     @ApiImplicitParams({
             @ApiImplicitParam(name = "username", value = "用户名", required = true, paramType = "query"),
@@ -250,12 +276,9 @@ public class MemberBuyerController {
     }
 
     @ApiOperation(value = "注销账号")
-    @ApiImplicitParams({
-            @ApiImplicitParam(name = "password", value = "密码", required = true, paramType = "query")
-    })
     @PutMapping("/cancellation")
-    public ResultMessage<Member> cancellation(@NotNull(message = "密码不能为空") @RequestParam String password) {
-        memberService.cancellation(password);
+    public ResultMessage<Member> cancellation() {
+        memberService.cancellation();
         return ResultUtil.success();
     }
 

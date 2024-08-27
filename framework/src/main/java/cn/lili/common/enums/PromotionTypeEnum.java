@@ -1,6 +1,11 @@
 package cn.lili.common.enums;
 
 
+import cn.lili.common.utils.StringUtils;
+
+import java.util.Arrays;
+import java.util.EnumSet;
+
 /**
  * 促销分类枚举
  *
@@ -23,7 +28,12 @@ public enum PromotionTypeEnum {
     /**
      * 有促销库存的活动类型
      */
-    static final PromotionTypeEnum[] haveStockPromotion = new PromotionTypeEnum[]{PINTUAN, SECKILL, KANJIA, POINTS_GOODS};
+    public static final PromotionTypeEnum[] haveStockPromotion = new PromotionTypeEnum[]{PINTUAN, SECKILL, KANJIA, POINTS_GOODS};
+
+    /**
+     * 有独立促销库存的活动类型
+     */
+    public static final PromotionTypeEnum[] haveIndependanceStockPromotion = new PromotionTypeEnum[]{SECKILL};
 
     private final String description;
 
@@ -47,4 +57,28 @@ public enum PromotionTypeEnum {
         return description;
     }
 
+    /**
+     * 判断促销类型是否有效
+     * @param typeEnumValue
+     * @return
+     */
+    public static boolean isValid(String typeEnumValue) {
+        if (StringUtils.isBlank(typeEnumValue)) {
+            return false;
+        }
+        return Arrays.stream(PromotionTypeEnum.values()).anyMatch(c -> c.name().equals(typeEnumValue));
+    }
+
+    /**
+     * 判断订单类型是否可售后
+     * POINTS\KANJIA 两种促销类型的订单不可进行售后
+     * @return true 可售后 false 不可售后
+     */
+    public static boolean isCanAfterSale(String promotionType) {
+        if (!isValid(promotionType)) {
+            return true;
+        }
+        EnumSet<PromotionTypeEnum> noAfterSale = EnumSet.of(PromotionTypeEnum.KANJIA, PromotionTypeEnum.POINTS_GOODS);
+        return !noAfterSale.contains(PromotionTypeEnum.valueOf(promotionType));
+    }
 }

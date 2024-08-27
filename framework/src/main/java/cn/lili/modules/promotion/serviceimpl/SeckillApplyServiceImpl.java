@@ -176,7 +176,7 @@ public class SeckillApplyServiceImpl extends ServiceImpl<SeckillApplyMapper, Sec
                 continue;
             }
             //获取秒杀活动时间段
-            DateTime startTime = DateUtil.offsetHour(seckill.getStartTime(), seckillApply.getTimeLine());
+            DateTime startTime = DateUtil.offsetHour(DateUtil.beginOfDay(seckill.getStartTime()), seckillApply.getTimeLine());
             //检测是否可以发布促销商品
             checkSeckillGoodsSku(seckill, seckillApply, goodsSku, startTime);
             //设置秒杀申请默认内容
@@ -393,13 +393,6 @@ public class SeckillApplyServiceImpl extends ServiceImpl<SeckillApplyMapper, Sec
                     goodsVO.setGoodsImage(goodsSku.getThumbnail());
                     goodsVO.setGoodsId(goodsSku.getGoodsId());
                     goodsVO.setGoodsName(goodsSku.getGoodsName());
-                    String promotionGoodsStockCacheKey = PromotionGoodsService.getPromotionGoodsStockCacheKey(
-                            PromotionTypeEnum.SECKILL,
-                            seckillId, seckillApply.getSkuId());
-                    Object quantity = cache.get(promotionGoodsStockCacheKey);
-                    if (quantity != null) {
-                        goodsVO.setQuantity((Integer) quantity);
-                    }
                     seckillGoodsVoS.add(goodsVO);
                 }
             }

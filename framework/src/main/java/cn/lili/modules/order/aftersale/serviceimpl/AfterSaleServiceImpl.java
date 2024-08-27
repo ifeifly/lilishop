@@ -2,8 +2,10 @@ package cn.lili.modules.order.aftersale.serviceimpl;
 
 import cn.hutool.core.text.CharSequenceUtil;
 import cn.hutool.core.util.NumberUtil;
+import cn.hutool.core.util.StrUtil;
 import cn.hutool.json.JSONUtil;
 import cn.lili.common.enums.ResultCode;
+import cn.lili.common.event.TransactionCommitSendMQEvent;
 import cn.lili.common.exception.ServiceException;
 import cn.lili.common.properties.RocketmqCustomProperties;
 import cn.lili.common.security.AuthUser;
@@ -22,10 +24,7 @@ import cn.lili.modules.order.aftersale.mapper.AfterSaleMapper;
 import cn.lili.modules.order.aftersale.service.AfterSaleService;
 import cn.lili.modules.order.order.entity.dos.Order;
 import cn.lili.modules.order.order.entity.dos.OrderItem;
-import cn.lili.modules.order.order.entity.enums.OrderItemAfterSaleStatusEnum;
-import cn.lili.modules.order.order.entity.enums.OrderStatusEnum;
-import cn.lili.modules.order.order.entity.enums.OrderTypeEnum;
-import cn.lili.modules.order.order.entity.enums.PayStatusEnum;
+import cn.lili.modules.order.order.entity.enums.*;
 import cn.lili.modules.order.order.service.OrderItemService;
 import cn.lili.modules.order.order.service.OrderService;
 import cn.lili.modules.order.trade.entity.enums.AfterSaleRefundWayEnum;
@@ -42,6 +41,7 @@ import cn.lili.modules.system.service.LogisticsService;
 import cn.lili.mybatis.util.PageUtil;
 import cn.lili.rocketmq.RocketmqSendCallbackBuilder;
 import cn.lili.rocketmq.tags.AfterSaleTagsEnum;
+import cn.lili.rocketmq.tags.OrderTagsEnum;
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.baomidou.mybatisplus.core.conditions.query.QueryWrapper;
 import com.baomidou.mybatisplus.core.conditions.update.LambdaUpdateWrapper;
@@ -50,6 +50,7 @@ import com.baomidou.mybatisplus.core.toolkit.Wrappers;
 import com.baomidou.mybatisplus.extension.service.impl.ServiceImpl;
 import org.apache.rocketmq.spring.core.RocketMQTemplate;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -102,6 +103,9 @@ public class AfterSaleServiceImpl extends ServiceImpl<AfterSaleMapper, AfterSale
      */
     @Autowired
     private RocketMQTemplate rocketMQTemplate;
+    @Autowired
+    private ApplicationEventPublisher applicationEventPublisher;
+
 
     @Override
     public IPage<AfterSaleVO> getAfterSalePages(AfterSaleSearchParams saleSearchParams) {
@@ -292,7 +296,7 @@ public class AfterSaleServiceImpl extends ServiceImpl<AfterSaleMapper, AfterSale
             throw new ServiceException(ResultCode.AFTER_STATUS_ERROR);
         }
         AfterSaleStatusEnum afterSaleStatusEnum;
-        String pass = "PASS";
+        String pass = AfterSaleStatusEnum.PASS.name();
         //判断审核状态
         //在线支付 则直接进行退款
         if (pass.equals(serviceStatus) &&
@@ -461,8 +465,9 @@ public class AfterSaleServiceImpl extends ServiceImpl<AfterSaleMapper, AfterSale
             case APPLY: {
 //                买家申请售后时已经输入了订单售后数量，这里不需要(+x)处理
                 orderItem.setReturnGoodsNumber(orderItem.getReturnGoodsNumber() + afterSale.getNum());
+                orderItem.setRefundPrice(CurrencyUtil.add(orderItem.getRefundPrice(), afterSale.getApplyRefundPrice()));
                 //修改orderItem订单
-                this.updateOrderItem(orderItem);
+                this.updateOrderItem(orderItem, afterSale);
                 break;
             }
 
@@ -471,8 +476,9 @@ public class AfterSaleServiceImpl extends ServiceImpl<AfterSaleMapper, AfterSale
             case BUYER_CANCEL:
             case SELLER_TERMINATION: {
                 orderItem.setReturnGoodsNumber(orderItem.getReturnGoodsNumber() - afterSale.getNum());
+                orderItem.setRefundPrice(CurrencyUtil.sub(orderItem.getRefundPrice(), afterSale.getApplyRefundPrice()));
                 //修改orderItem订单
-                this.updateOrderItem(orderItem);
+                this.updateOrderItem(orderItem, afterSale);
                 break;
             }
             default:
@@ -580,11 +586,10 @@ public class AfterSaleServiceImpl extends ServiceImpl<AfterSaleMapper, AfterSale
      *
      * @param afterSale 售后对象
      */
-    private void sendAfterSaleMessage(AfterSale afterSale) {
-        //发送售后创建消息
-        String destination = rocketmqCustomProperties.getAfterSaleTopic() + ":" + AfterSaleTagsEnum.AFTER_SALE_STATUS_CHANGE.name();
-        //发送订单变更mq消息
-        rocketMQTemplate.asyncSend(destination, JSONUtil.toJsonStr(afterSale), RocketmqSendCallbackBuilder.commonCallback());
+    @Transactional(rollbackFor = Exception.class)
+    public void sendAfterSaleMessage(AfterSale afterSale) {
+        applicationEventPublisher.publishEvent(new TransactionCommitSendMQEvent("发送售后单状态变更MQ消息", rocketmqCustomProperties.getAfterSaleTopic(),
+                AfterSaleTagsEnum.AFTER_SALE_STATUS_CHANGE.name(), JSONUtil.toJsonStr(afterSale)));
     }
 
     /**
@@ -627,7 +632,7 @@ public class AfterSaleServiceImpl extends ServiceImpl<AfterSaleMapper, AfterSale
      * @return void
      * @author ftyy
      **/
-    private void updateOrderItem(OrderItem orderItem) {
+    private void updateOrderItem(OrderItem orderItem, AfterSale afterSale) {
         //订单状态不能为新订单,已失效订单或未申请订单才可以去修改订单信息
         OrderItemAfterSaleStatusEnum afterSaleTypeEnum = OrderItemAfterSaleStatusEnum.valueOf(orderItem.getAfterSaleStatus());
         switch (afterSaleTypeEnum) {
@@ -652,10 +657,27 @@ public class AfterSaleServiceImpl extends ServiceImpl<AfterSaleMapper, AfterSale
             default:
                 break;
         }
-        orderItemService.update(new LambdaUpdateWrapper<OrderItem>()
+
+        LambdaUpdateWrapper<OrderItem> lambdaUpdateWrapper = new LambdaUpdateWrapper<OrderItem>()
                 .eq(OrderItem::getSn, orderItem.getSn())
                 .set(OrderItem::getAfterSaleStatus, orderItem.getAfterSaleStatus())
-                .set(OrderItem::getReturnGoodsNumber, orderItem.getReturnGoodsNumber()));
+                .set(OrderItem::getReturnGoodsNumber, orderItem.getReturnGoodsNumber());
+
+        if (afterSale.getServiceStatus().equals(AfterSaleStatusEnum.COMPLETE.name())) {
+            if (orderItem.getReturnGoodsNumber().equals(orderItem.getNum())) {
+                lambdaUpdateWrapper.set(OrderItem::getIsRefund, RefundStatusEnum.ALL_REFUND.name());
+            } else {
+                lambdaUpdateWrapper.set(OrderItem::getIsRefund, RefundStatusEnum.PART_REFUND.name());
+            }
+        } else if (afterSale.getServiceStatus().equals(AfterSaleStatusEnum.APPLY.name())) {
+            lambdaUpdateWrapper.set(OrderItem::getIsRefund, RefundStatusEnum.REFUNDING.name());
+        } else if (afterSale.getServiceStatus().equals(AfterSaleStatusEnum.REFUSE.name()) ||
+                afterSale.getServiceStatus().equals(AfterSaleStatusEnum.BUYER_CANCEL.name()) ||
+                afterSale.getServiceStatus().equals(AfterSaleStatusEnum.SELLER_TERMINATION.name())) {
+            lambdaUpdateWrapper.set(OrderItem::getIsRefund, RefundStatusEnum.NO_REFUND.name());
+        }
+
+        orderItemService.update(lambdaUpdateWrapper);
     }
 
 }

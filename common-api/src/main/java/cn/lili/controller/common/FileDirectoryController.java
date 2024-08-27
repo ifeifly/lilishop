@@ -1,5 +1,6 @@
 package cn.lili.controller.common;
 
+import cn.lili.common.enums.ResultCode;
 import cn.lili.common.enums.ResultUtil;
 import cn.lili.common.security.context.UserContext;
 import cn.lili.common.vo.ResultMessage;
@@ -12,6 +13,7 @@ import io.swagger.annotations.ApiOperation;
 import lombok.RequiredArgsConstructor;
 import org.springframework.web.bind.annotation.*;
 
+import javax.validation.Valid;
 import java.util.List;
 
 /**
@@ -37,16 +39,18 @@ public class FileDirectoryController {
 
     @ApiOperation(value = "添加文件目录")
     @PostMapping
-    public ResultMessage<FileDirectory> addSceneFileList(@RequestBody FileDirectory fileDirectory) {
+    public ResultMessage<FileDirectory> addSceneFileList(@RequestBody @Valid FileDirectory fileDirectory) {
         fileDirectory.setDirectoryType(UserContext.getCurrentUser().getRole().name());
+        fileDirectory.setOwnerId(UserContext.getCurrentUser().getId());
         fileDirectoryService.save(fileDirectory);
         return ResultUtil.data(fileDirectory);
     }
 
     @ApiOperation(value = "修改文件目录")
     @PutMapping
-    public ResultMessage<FileDirectory> editSceneFileList(@RequestBody FileDirectory fileDirectory) {
+    public ResultMessage<FileDirectory> editSceneFileList(@RequestBody @Valid FileDirectory fileDirectory) {
         fileDirectory.setDirectoryType(UserContext.getCurrentUser().getRole().name());
+        fileDirectory.setOwnerId(UserContext.getCurrentUser().getId());
         fileDirectoryService.updateById(fileDirectory);
         return ResultUtil.data(fileDirectory);
     }
@@ -54,8 +58,10 @@ public class FileDirectoryController {
     @ApiOperation(value = "删除文件目录")
     @DeleteMapping("/{id}")
     public ResultMessage<Object> deleteSceneFileList(@PathVariable String id) {
-        //删除文件夹下面的图片
-        fileService.batchDeleteByDirectory(id);
+        //检测文件夹下是否包含图片
+        if(fileService.countByDirectory(id)){
+            return ResultUtil.error(ResultCode.FILE_DIRECTORY_NOT_EMPTY);
+        }
         //删除目录
         fileDirectoryService.removeById(id);
         return ResultUtil.success();

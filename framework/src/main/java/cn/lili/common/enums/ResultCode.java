@@ -42,6 +42,7 @@ public enum ResultCode {
     PLATFORM_NOT_SUPPORTED_IM(1006, "平台未开启IM"),
     STORE_NOT_SUPPORTED_IM(1007, "店铺未开启IM"),
     UNINITIALIZED_PASSWORD(1008, "非初始化密码，无法进行初始化设置"),
+    FILE_DIRECTORY_NOT_EMPTY(1012, "文件夹下有文件，请删除所有文件后删除文件夹！"),
     /**
      * 分类
      */
@@ -89,6 +90,7 @@ public enum ResultCode {
     VIRTUAL_GOODS_NOT_NEED_TEMP(11015, "虚拟商品无需选择配送模板"),
     GOODS_NOT_EXIST_STORE(11017, "当前用户无权操作此商品"),
     GOODS_TYPE_ERROR(11016, "需选择商品类型"),
+    GOODS_STOCK_IMPORT_ERROR(11018, "导入商品库存失败，请检查表格数据"),
 
     /**
      * 参数
@@ -150,6 +152,7 @@ public enum ResultCode {
     CLERK_DISABLED_ERROR(20031, "店员已禁用"),
     CLERK_CURRENT_SUPPER(20032, "无法删除当前登录店员"),
     CANT_EDIT_CLERK_SHOPKEEPER(20033, "无法在店员管理编辑店员信息"),
+    USER_MOBILE_REPEATABLE_ERROR(20034, "该手机号已存在"),
     /**
      * 权限
      */
@@ -173,6 +176,7 @@ public enum ResultCode {
     DISTRIBUTION_RETREAT_ERROR(22004, "分销员清退失败"),
     DISTRIBUTION_CASH_NOT_EXIST(22005, "分销员提现记录不存在"),
     DISTRIBUTION_GOODS_DOUBLE(22006, "不能重复添加分销商品"),
+    DISTRIBUTION_EDIT_ERROR(22007, "修改分销员失败"),
 
     /**
      * 购物车
@@ -205,6 +209,7 @@ public enum ResultCode {
     POINT_NOT_ENOUGH(31015, "当前会员积分不足购买当前积分商品！"),
     ORDER_LABEL_ORDER_ERROR(31016, "订单不能打印电子面单"),
     ORDER_PRICE_ERROR(31017,"订单金额不能小于等于0"),
+    ORDER_PACKAGE_NOT_EXIST(31017, "当前订单包裹不存在！"),
 
 
     /**
@@ -418,7 +423,7 @@ public enum ResultCode {
     STORE_CLOSE_ERROR(50006, "店铺关闭，请联系管理员"),
     STORE_DELIVER_GOODS_ADDRESS(50007,"请填写商家发货地址"),
     FREIGHT_TEMPLATE_NOT_EXIST(50010, "当前模版不存在"),
-    STORE_STATUS_ERROR(50011, "店铺状态异常，无法申请"),
+    STORE_STATUS_ERROR(50011, "店铺在申请中或审核中，请勿重复操作"),
     STORE_DELIVER_ADDRESS_EXIST(50012,"请填写发货地址"),
 
     /**
@@ -495,6 +500,9 @@ public enum ResultCode {
     WECHAT_MP_MESSAGE_TMPL_ERROR(80306, "未能获取到微信模版消息id"),
     WECHAT_ERROR(80307, "微信接口异常"),
     APP_VERSION_EXIST(80307, "APP版本已存在"),
+    APP_VERSION_PARAM_ERROR(80308, "添加APP版本参数异常"),
+    // 未选择APP类型
+    APP_VERSION_TYPE_ERROR(80308, "请选择有效的APP类型"),
 
     /**
      * IM

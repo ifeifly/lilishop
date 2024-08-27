@@ -25,12 +25,12 @@
         <docker-registry>registry.cn-beijing.aliyuncs.com/lili-images</docker-registry>
         <images-version>1</images-version>
         <alipay-sdk-version>4.22.32.ALL</alipay-sdk-version>
-        <mybatis-plus-version>3.5.1</mybatis-plus-version>
-        <Hutool-version>5.8.14</Hutool-version>
+        <mybatis-plus-version>3.5.5</mybatis-plus-version>
+        <Hutool-version>5.8.24</Hutool-version>
         <TinyPinyin-verions>2.0.3.RELEASE</TinyPinyin-verions>
         <jasypt-version>3.0.4</jasypt-version>
         <neetl-version>2.9.10</neetl-version>
-        <lombok-version>1.18.24</lombok-version>
+        <lombok-version>1.18.30</lombok-version>
         <redisson>3.15.6</redisson>
         <aliyun-version>4.5.18</aliyun-version>
         <aliyun-sdk-oss-version>3.11.1</aliyun-sdk-oss-version>
@@ -48,8 +48,8 @@
         <knife4j.version>2.0.9</knife4j.version>
         <de.codecentric>2.6.6</de.codecentric>
         <userAgentUtils>1.21</userAgentUtils>
-        <poi-version>5.1.0</poi-version>
-        <poi-ooxml-version>5.1.0</poi-ooxml-version>
+        <poi-version>5.2.3</poi-version>
+        <poi-ooxml-version>5.2.3</poi-ooxml-version>
         <logstash-logback-encoder>7.1.1</logstash-logback-encoder>
         <zxing>3.5.0</zxing>
         <slf4j-api>1.7.36</slf4j-api>
@@ -80,6 +80,17 @@
 
     <build>
         <plugins>
+
+            <plugin>
+                <groupId>org.apache.maven.plugins</groupId>
+                <artifactId>maven-compiler-plugin</artifactId>
+                <version>${maven-compiler-plugin.version}</version>
+                <configuration>
+                    <source>${java.version}</source>
+                    <target>${java.version}</target>
+                </configuration>
+            </plugin>
+
             <plugin>
                 <groupId>org.apache.maven.plugins</groupId>
                 <artifactId>maven-resources-plugin</artifactId>
